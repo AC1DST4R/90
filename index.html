@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A-90 / A-90B Simulator</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: Arial, sans-serif;
+}
+
+#menu {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    background: #080808;
+}
+
+#menu h1 {
+    color: white;
+    font-size: 42px;
+    margin: 0 0 20px;
+    letter-spacing: 4px;
+}
+
+button {
+    width: 260px;
+    padding: 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background: #151515;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+button:hover {
+    background: #222;
+    border-color: #777;
+}
+
+#game {
+    position: fixed;
+    inset: 0;
+    display: none;
+    background: #000;
+}
+
+#background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#static {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            rgba(255, 0, 0, 0.13) 0px,
+            rgba(255, 0, 0, 0.13) 1px,
+            transparent 1px,
+            transparent 4px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 0, 0, 0.06) 0px,
+            rgba(255, 0, 0, 0.06) 2px,
+            transparent 2px,
+            transparent 5px
+        );
+    animation: staticMove 0.08s steps(2) infinite;
+}
+
+@keyframes staticMove {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(-4px, 2px);
+    }
+
+    50% {
+        transform: translate(3px, -3px);
+    }
+
+    75% {
+        transform: translate(2px, 4px);
+    }
+
+    100% {
+        transform: translate(-3px, -2px);
+    }
+}
+
+#entity {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 5;
+    max-width: 70vw;
+    max-height: 70vh;
+    transform: translate(-50%, -50%);
+    object-fit: contain;
+    display: none;
+}
+
+#a90 {
+    position: absolute;
+    inset: 0;
+    display: none;
+}
+
+#a90b {
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: #000;
+}
+
+#a90bEntity {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(55vw, 650px);
+    max-height: 70vh;
+    transform: translate(-50%, -50%);
+    object-fit: contain;
+    display: none;
+}
+
+#instruction {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background: #000;
+}
+
+#instructionCard {
+    min-width: 330px;
+    min-height: 260px;
+    padding: 35px 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    border: 2px solid #777;
+    background: #000;
+    box-shadow:
+        0 0 0 5px #000,
+        0 0 0 7px #333;
+    animation: glitchCard 0.08s steps(2) infinite;
+}
+
+#instructionImage {
+    width: min(320px, 65vw);
+    max-height: 170px;
+    object-fit: contain;
+}
+
+#instructionText {
+    margin-top: 22px;
+    color: white;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 38px;
+    font-weight: bold;
+    letter-spacing: 5px;
+    text-shadow:
+        2px 0 #777,
+        -2px 0 #222;
+}
+
+@keyframes glitchCard {
+    0% {
+        transform: translate(0);
+    }
+
+    20% {
+        transform: translate(-5px, 2px);
+    }
+
+    40% {
+        transform: translate(4px, -3px);
+    }
+
+    60% {
+        transform: translate(-2px, -4px);
+    }
+
+    80% {
+        transform: translate(5px, 3px);
+    }
+
+    100% {
+        transform: translate(0);
+    }
+}
+
+.flash {
+    animation: flash 0.12s steps(2) infinite;
+}
+
+@keyframes flash {
+    0% {
+        opacity: 1;
+        filter: brightness(1);
+    }
+
+    50% {
+        opacity: 0.25;
+        filter: brightness(2.5) contrast(1.8);
+    }
+
+    100% {
+        opacity: 1;
+        filter: brightness(1);
+    }
+}
+
+#status {
+    position: fixed;
+    top: 15px;
+    left: 50%;
+    z-index: 200;
+    transform: translateX(-50%);
+    color: white;
+    font-family: "Courier New", monospace;
+    font-size: 14px;
+    opacity: 0.5;
+    display: none;
+}
+
+#jumpscare {
+    position: absolute;
+    inset: 0;
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    overflow: hidden;
+}
+
+#jumpscareImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    animation: jumpscareShake 0.08s steps(2) infinite;
+}
+
+#jumpscare::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            rgba(255,255,255,0.08) 0px,
+            rgba(255,255,255,0.08) 1px,
+            transparent 1px,
+            transparent 4px
+        );
+    animation: staticOverlay 0.06s steps(2) infinite;
+}
+
+@keyframes jumpscareShake {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    15% {
+        transform: translate(-14px, 8px) scale(1.03);
+    }
+
+    30% {
+        transform: translate(12px, -10px) scale(1.01);
+    }
+
+    45% {
+        transform: translate(-9px, -5px) scale(1.05);
+    }
+
+    60% {
+        transform: translate(13px, 11px) scale(1.02);
+    }
+
+    75% {
+        transform: translate(-12px, -8px) scale(1.04);
+    }
+
+    90% {
+        transform: translate(8px, 6px) scale(1.01);
+    }
+
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+@keyframes staticOverlay {
+    0% {
+        transform: translate(0, 0);
+        opacity: 0.3;
+    }
+
+    50% {
+        transform: translate(5px, -3px);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: translate(-4px, 4px);
+        opacity: 0.35;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="menu">
+    <h1>A-90 SIMULATOR</h1>
+    <button id="a90Button">SPAWN A-90</button>
+    <button id="a90bButton">SPAWN A-90B</button>
+</div>
+
+<div id="game">
+
+    <div id="a90">
+        <img
+            id="background"
+            src="https://raw.githubusercontent.com/AC1DST4R/90/main/images/BACKGROUND.gif"
+        >
+
+        <div id="static"></div>
+
+        <img id="entity">
+    </div>
+
+    <div id="a90b">
+
+        <div id="instruction">
+            <div id="instructionCard">
+                <img id="instructionImage">
+                <div id="instructionText"></div>
+            </div>
+        </div>
+
+        <img
+            id="a90bEntity"
+            src="https://raw.githubusercontent.com/AC1DST4R/90/main/images/A-90b.webp"
+        >
+
+    </div>
+
+    <div id="jumpscare">
+        <img id="jumpscareImage">
+    </div>
+
+</div>
+
+<div id="status"></div>
+
+<audio
+    id="warningSound"
+    src="https://raw.githubusercontent.com/AC1DST4R/90/main/sound/warning.mp3"
+    preload="auto">
+</audio>
+
+<audio
+    id="failSound"
+    src="https://raw.githubusercontent.com/AC1DST4R/90/main/sound/fail.mp3"
+    preload="auto">
+</audio>
+
+<audio
+    id="haltSound"
+    src="https://raw.githubusercontent.com/AC1DST4R/90/main/sound/HALT.ogg"
+    preload="auto">
+</audio>
+
+<audio
+    id="proceedSound"
+    src="https://raw.githubusercontent.com/AC1DST4R/90/main/sound/PROCEED.ogg"
+    preload="auto">
+</audio>
+
+<script>
+const RAW = "https://raw.githubusercontent.com/AC1DST4R/90/main/";
+
+const A90_IMAGE = RAW + "images/A-90.png";
+const STOP_IMAGE = RAW + "images/STOP.png";
+
+const A90B_IMAGE = RAW + "images/A-90b.webp";
+const HALT_IMAGE = RAW + "images/HALT.webp";
+const PROCEED_IMAGE = RAW + "images/PROCEED.webp";
+
+const A90_JUMPSCARE = RAW + "images/JUMPSCARE.webp";
+const A90B_JUMPSCARE = RAW + "images/ATTACK.webp";
+
+const menu = document.getElementById("menu");
+const game = document.getElementById("game");
+
+const a90 = document.getElementById("a90");
+const a90b = document.getElementById("a90b");
+
+const entity = document.getElementById("entity");
+const staticEffect = document.getElementById("static");
+
+const instruction = document.getElementById("instruction");
+const instructionCard = document.getElementById("instructionCard");
+const instructionImage = document.getElementById("instructionImage");
+const instructionText = document.getElementById("instructionText");
+
+const a90bEntity = document.getElementById("a90bEntity");
+
+const jumpscare = document.getElementById("jumpscare");
+const jumpscareImage = document.getElementById("jumpscareImage");
+
+const status = document.getElementById("status");
+
+const warningSound = document.getElementById("warningSound");
+const failSound = document.getElementById("failSound");
+const haltSound = document.getElementById("haltSound");
+const proceedSound = document.getElementById("proceedSound");
+
+let running = false;
+let failed = false;
+let timers = [];
+
+let a90LastX = null;
+let a90LastY = null;
+
+let mouseX = 0;
+let mouseY = 0;
+let lastMouseX = 0;
+let lastMouseY = 0;
+let mouseMoved = false;
+
+function clearTimers() {
+    timers.forEach(clearTimeout);
+    timers = [];
+}
+
+function wait(ms) {
+    return new Promise(resolve => {
+        const timer = setTimeout(resolve, ms);
+        timers.push(timer);
+    });
+}
+
+function resetAudio(audio) {
+    audio.pause();
+    audio.currentTime = 0;
+}
+
+function playAudio(audio) {
+    resetAudio(audio);
+
+    const promise = audio.play();
+
+    if (promise) {
+        promise.catch(() => {});
+    }
+}
+
+function startGame() {
+    menu.style.display = "none";
+    game.style.display = "block";
+
+    running = true;
+    failed = false;
+}
+
+function returnMenu() {
+    clearTimers();
+
+    running = false;
+    failed = false;
+
+    a90.style.display = "none";
+    a90b.style.display = "none";
+
+    instruction.style.display = "none";
+    a90bEntity.style.display = "none";
+
+    entity.style.display = "none";
+
+    staticEffect.style.opacity = "0";
+
+    jumpscare.style.display = "none";
+
+    status.style.display = "none";
+
+    resetAudio(warningSound);
+    resetAudio(failSound);
+    resetAudio(haltSound);
+    resetAudio(proceedSound);
+
+    game.style.display = "none";
+    menu.style.display = "flex";
+}
+
+async function showJumpscare(image) {
+    clearTimers();
+
+    a90.style.display = "none";
+    a90b.style.display = "none";
+
+    instruction.style.display = "none";
+    a90bEntity.style.display = "none";
+    entity.style.display = "none";
+
+    staticEffect.style.opacity = "0";
+    status.style.display = "none";
+
+    jumpscareImage.src = image;
+
+    jumpscare.style.display = "flex";
+
+    jumpscareImage.style.animation = "none";
+    void jumpscareImage.offsetWidth;
+    jumpscareImage.style.animation =
+        "jumpscareShake 0.08s steps(2) infinite";
+
+    playAudio(failSound);
+
+    let duration = 2000;
+
+    if (
+        Number.isFinite(failSound.duration) &&
+        failSound.duration > 0
+    ) {
+        duration = failSound.duration * 1000;
+    }
+
+    await wait(duration);
+
+    jumpscare.style.display = "none";
+
+    returnMenu();
+}
+
+function dieA90() {
+    if (!running || failed) return;
+
+    failed = true;
+
+    showJumpscare(A90_JUMPSCARE);
+}
+
+function dieA90B() {
+    if (!running || failed) return;
+
+    failed = true;
+
+    showJumpscare(A90B_JUMPSCARE);
+}
+
+document.addEventListener("mousemove", event => {
+
+    const x = event.clientX;
+    const y = event.clientY;
+
+    mouseX = x;
+    mouseY = y;
+
+    if (
+        a90.style.display === "block" &&
+        running &&
+        !failed
+    ) {
+
+        if (
+            a90LastX !== null &&
+            a90LastY !== null
+        ) {
+
+            const dx = Math.abs(x - a90LastX);
+            const dy = Math.abs(y - a90LastY);
+
+            if (dx > 1 || dy > 1) {
+                dieA90();
+                return;
+            }
+        }
+
+        a90LastX = x;
+        a90LastY = y;
+    }
+
+    if (
+        a90b.style.display === "block" &&
+        running &&
+        !failed
+    ) {
+
+        if (
+            Math.abs(x - lastMouseX) > 2 ||
+            Math.abs(y - lastMouseY) > 2
+        ) {
+            mouseMoved = true;
+        }
+    }
+});
+
+async function spawnA90() {
+
+    if (running) return;
+
+    startGame();
+
+    a90.style.display = "block";
+    a90b.style.display = "none";
+
+    entity.src = A90_IMAGE;
+    entity.style.display = "block";
+
+    staticEffect.style.opacity = "1";
+
+    a90LastX = null;
+    a90LastY = null;
+
+    playAudio(warningSound);
+
+    let warningDuration = 2000;
+
+    if (
+        Number.isFinite(warningSound.duration) &&
+        warningSound.duration > 0
+    ) {
+        warningDuration =
+            warningSound.duration * 1000;
+    }
+
+    const endTime =
+        performance.now() + warningDuration;
+
+    while (
+        performance.now() < endTime &&
+        running &&
+        !failed
+    ) {
+
+        entity.src =
+            Math.random() > 0.5
+                ? A90_IMAGE
+                : STOP_IMAGE;
+
+        entity.classList.add("flash");
+
+        await wait(
+            Math.floor(Math.random() * 140) + 70
+        );
+
+        if (failed || !running) return;
+
+        entity.classList.remove("flash");
+
+        await wait(
+            Math.floor(Math.random() * 180) + 80
+        );
+    }
+
+    if (!failed && running) {
+
+        entity.classList.remove("flash");
+
+        entity.style.display = "none";
+
+        staticEffect.style.opacity = "0";
+
+        await wait(100);
+
+        if (!failed && running) {
+            returnMenu();
+        }
+    }
+}
+
+async function runA90BRound(round, total) {
+
+    if (failed || !running) return false;
+
+    mouseMoved = false;
+
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+
+    const halt = Math.random() < 0.5;
+
+    instructionImage.src = halt
+        ? HALT_IMAGE
+        : PROCEED_IMAGE;
+
+    instructionText.textContent = halt
+        ? "HALT."
+        : "PROCEED.";
+
+    instruction.style.display = "flex";
+
+    instructionCard.classList.add("flash");
+
+    if (halt) {
+        playAudio(haltSound);
+    } else {
+        playAudio(proceedSound);
+    }
+
+    await wait(1000);
+
+    if (failed || !running) return false;
+
+    instructionCard.classList.remove("flash");
+
+    instruction.style.display = "none";
+
+    a90bEntity.src = A90B_IMAGE;
+    a90bEntity.style.display = "block";
+
+    status.textContent =
+        `ROUND ${round} / ${total}`;
+
+    status.style.display = "block";
+
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+    mouseMoved = false;
+
+    await wait(1000);
+
+    if (failed || !running) return false;
+
+    const start = performance.now();
+
+    while (
+        performance.now() - start < 2000 &&
+        running &&
+        !failed
+    ) {
+
+        if (halt && mouseMoved) {
+            dieA90B();
+            return false;
+        }
+
+        if (!halt && mouseMoved) {
+            return true;
+        }
+
+        await wait(20);
+    }
+
+    if (!halt) {
+        dieA90B();
+        return false;
+    }
+
+    return true;
+}
+
+async function spawnA90B() {
+
+    if (running) return;
+
+    startGame();
+
+    a90.style.display = "none";
+    a90b.style.display = "block";
+
+    const totalRounds =
+        Math.floor(Math.random() * 6) + 5;
+
+    for (
+        let round = 1;
+        round <= totalRounds;
+        round++
+    ) {
+
+        const result =
+            await runA90BRound(
+                round,
+                totalRounds
+            );
+
+        if (
+            !result ||
+            failed ||
+            !running
+        ) {
+            return;
+        }
+
+        a90bEntity.style.display = "none";
+
+        await wait(250);
+    }
+
+    if (!failed && running) {
+        returnMenu();
+    }
+}
+
+document.getElementById("a90Button")
+    .addEventListener("click", spawnA90);
+
+document.getElementById("a90bButton")
+    .addEventListener("click", spawnA90B);
+</script>
+
+</body>
+</html>
